@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">دیواربان</string>
+    <string-array name="period">
+        <item>10</item>
+        <item>20</item>
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+        <item>300</item>
+    </string-array>
+
+    <string-array name="period_labels">
+        <item>۱۰ ثانیه</item>
+        <item>۲۰ ثانیه</item>
+        <item>۳۰ ثانیه</item>
+        <item>۱ دقیقه</item>
+        <item>۲ دقیقه</item>
+        <item>۵ دقیقه</item>
+    </string-array>
+</resources>
