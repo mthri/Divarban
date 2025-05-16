@@ -4,8 +4,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
-import android.webkit.WebSettings
-import android.webkit.WebView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -17,21 +15,15 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import org.json.JSONObject
 import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.util.Log
 import android.widget.ImageView
 import android.widget.Spinner
-import android.widget.TextView
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.delay
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -63,6 +55,13 @@ class MainActivity : AppCompatActivity() {
         val stopButton = findViewById<Button>(R.id.btnStop)
         val periodSpinner = findViewById<Spinner>(R.id.spnrPeriod)
         val imageView = findViewById<ImageView>(R.id.imgTelegramChannel)
+
+        // show log activity
+        val logoImageView = findViewById<ImageView>(R.id.myImageView)
+        logoImageView.setOnClickListener {
+            val intent = Intent(this, LogDisplayActivity::class.java)
+            startActivity(intent)
+        }
 
 
         restorePreferences(sharedPref, urlTextEdit, periodSpinner)
@@ -96,45 +95,6 @@ class MainActivity : AppCompatActivity() {
             val url = "https://t.me/mthri_tips"
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
-        }
-    }
-
-    private fun runScraping(targetUrl: String) {
-        val sharedPref = getSharedPreferences(DIVAR_STORAGE, Context.MODE_PRIVATE)
-
-        val existingTokens = sharedPref.getStringSet("tokens", emptySet())?.toMutableSet() ?: mutableSetOf()
-        var firstRun = false
-
-        if (existingTokens.isEmpty()){
-            firstRun = true
-        }
-
-        lifecycleScope.launch {
-            val newPosts = divarScraper.fetchDivarPosts(targetUrl)
-            if (newPosts.isNotEmpty()) {
-                var changed = false
-
-                for (post in newPosts) {
-                    val token = post.url.split("/").last()
-                    if (existingTokens.add(token)) {
-                        if(!firstRun){
-                            sendNewPostNotification(post.name, post.url)
-                        }
-                        changed = true
-                    }
-                }
-
-                if (changed) {
-                    with(sharedPref.edit()) {
-                        putStringSet("tokens", HashSet(existingTokens))
-                        apply()
-                    }
-                }
-
-                Log.d("runScraping", "Processed and saved ${newPosts.size} posts. Notifications sent for new posts.")
-            } else {
-                Log.i("runScraping", "No new posts found or an error occurred.")
-            }
         }
     }
 
@@ -205,18 +165,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startPeriodicScraping(targetUrl: String, interval: Long) {
-        scrapingJob?.cancel()
-        Toast.makeText(this, "ربات فعال شد", Toast.LENGTH_LONG).show()
-        scrapingJob = lifecycleScope.launch {
-            // first for ignore
-            runScraping(targetUrl)
-            while (isActive) {
-                runScraping(targetUrl)
-                delay(interval * 1000)
-            }
+        val intent = Intent(this, ScrapingService::class.java).apply {
+            putExtra("url", targetUrl)
+            putExtra("interval", interval)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
     }
-
+    
     private fun setupInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -273,6 +232,9 @@ class MainActivity : AppCompatActivity() {
         enableControls(urlEdit, spinner, startBtn)
         scrapingJob?.cancel()
         scrapingJob = null
+        val stopIntent = Intent(this, ScrapingService::class.java)
+        stopService(stopIntent)
         Toast.makeText(this, "ربات متوقف شد", Toast.LENGTH_SHORT).show()
     }
+
 }

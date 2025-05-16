@@ -6,7 +6,6 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import android.util.Log
 
 data class DivarPost(
     val name: String,
@@ -32,21 +31,27 @@ class DivarScraper {
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        Log.e("DivarScraper", "Error fetching Divar posts: ${response.code} ${response.message}")
+                        logE("DivarScraper", "Error fetching Divar posts: ${response.code} ${response.message}")
                         return@withContext emptyList()
                     }
 
                     val responseBody = response.body?.string() ?: ""
                     if (responseBody.isEmpty()) {
-                        Log.e("DivarScraper", "Empty response body.")
+                        logE("DivarScraper", "Empty response body.")
                         return@withContext emptyList()
                     }
 
-                    val scriptElement = responseBody.split("<script type=\"application/ld+json\">").last()
-                    val jsonData = scriptElement.split("</script>").first()
+                    val scriptElements = responseBody.split("<script type=\"application/ld+json\">")
+                    if (scriptElements.size == 1) {
+                        logI("DivarScraper", "Returning empty list")
+                        return@withContext emptyList()
+                    }
+
+                    val scriptContent = scriptElements.last()
+                    val jsonData = scriptContent.split("</script>").first()
 
                     if (jsonData.isEmpty()) {
-                        Log.e("DivarScraper", "JSON data not found or empty in script tag.")
+                        logE("DivarScraper", "JSON data not found or empty in script tag.")
                         return@withContext emptyList()
                     }
 
@@ -55,9 +60,9 @@ class DivarScraper {
 
                 }
             } catch (e: IOException) {
-                Log.e("DivarScraper", "Network Error fetching Divar posts: ${e.message}", e)
+                logE("DivarScraper", "Network Error fetching Divar posts: ${e.message}")
             } catch (e: Exception) {
-                Log.e("DivarScraper", "Error fetching Divar posts: ${e.message}", e)
+                logE("DivarScraper", "Error fetching Divar posts: ${e.message}")
             }
             return@withContext postsData
         }

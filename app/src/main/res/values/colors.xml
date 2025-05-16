@@ -3,4 +3,5 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="divar_red">#a62426</color>
+    <color name="log_background">#EEEEEE</color>
 </resources>
